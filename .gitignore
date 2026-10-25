@@ -1,0 +1,18 @@
+# 작성: 2026-10-25 10:35 KST
+# 키와 비밀번호가 든 파일은 깃허브에 올리지 않음
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+
+# 파이썬 부산물
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# 운영체제와 편집기 부산물
+.DS_Store
+Thumbs.db
+.vscode/
