@@ -1,4 +1,4 @@
-# 작성: 2026-10-26 00:10 KST
+# 작성: 2026-10-25 23:13 KST
 """메모리 상태에서 지원, 투표, 마감을 처리하는 엔진. 시험과 시나리오 재생용이며 규칙은 rules 를 부른다."""
 from dataclasses import dataclass, field
 from typing import Mapping, Sequence

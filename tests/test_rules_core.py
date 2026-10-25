@@ -1,4 +1,4 @@
-# 작성: 2026-10-25 23:22 KST
+# 작성: 2026-10-25 23:10 KST
 from teamapp import rules
 from tests.helpers import FD, PL, PT, RW, TT, WP, mk
 

@@ -1,4 +1,4 @@
-# 작성: 2026-10-25 23:55 KST
+# 작성: 2026-10-25 23:12 KST
 """팀이 없는 학생의 완전탐색 배정. 5가지 검사를 모두 통과하는 배정을 가지치기로 찾는다."""
 from dataclasses import dataclass
 from typing import Mapping, Sequence

@@ -1,4 +1,4 @@
-# 작성: 2026-10-25 23:20 KST
+# 작성: 2026-10-25 23:10 KST
 streamlit==1.66.1
 psycopg[binary]==3.3.6
 psycopg_pool==3.3.3

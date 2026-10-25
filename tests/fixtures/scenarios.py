@@ -1,4 +1,4 @@
-# 작성: 2026-10-26 00:10 KST
+# 작성: 2026-10-25 23:13 KST
 """연습용 시나리오 3개(쉬움, 중간, 어려움)의 단계와 기대 결과. 학생 N의 학번 = base + N."""
 from dataclasses import dataclass
 from typing import Callable

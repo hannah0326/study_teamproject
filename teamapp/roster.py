@@ -1,4 +1,4 @@
-# 작성: 2026-10-25 23:40 KST
+# 작성: 2026-10-25 23:11 KST
 """명단 CSV 읽기와 검증. 역할은 main_role, sub_roles 열에서만 읽는다."""
 import csv
 import io

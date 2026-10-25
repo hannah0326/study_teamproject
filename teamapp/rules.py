@@ -1,4 +1,4 @@
-# 작성: 2026-10-25 23:22 KST
+# 작성: 2026-10-25 23:11 KST
 """팀 규칙 판정. DB와 화면에 의존하지 않는 순수 함수만 둔다."""
 from dataclasses import dataclass
 from typing import Mapping, Sequence

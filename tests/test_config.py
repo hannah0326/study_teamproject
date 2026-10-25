@@ -1,4 +1,4 @@
-# 작성: 2026-10-25 23:12 KST
+# 작성: 2026-10-25 23:09 KST
 from teamapp import config
 
 

@@ -1,4 +1,4 @@
-# 작성: 2026-10-26 00:10 KST
+# 작성: 2026-10-25 23:13 KST
 from pathlib import Path
 
 import pytest

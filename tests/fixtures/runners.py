@@ -1,4 +1,4 @@
-# 작성: 2026-10-26 00:10 KST
+# 작성: 2026-10-25 23:13 KST
 """시나리오 실행기. 3단계에서 DB 서비스용 실행기를 같은 규약으로 추가한다."""
 from teamapp.engine import Engine
 from teamapp.rules import Decision

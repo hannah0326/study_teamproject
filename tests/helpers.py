@@ -1,4 +1,4 @@
-# 작성: 2026-10-25 23:22 KST
+# 작성: 2026-10-25 23:10 KST
 """시험용 학생 만들기 도우미."""
 from teamapp.rules import Student
 
