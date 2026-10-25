@@ -2,7 +2,7 @@
 """진입점. 배포의 Main file path 는 이 파일 이름임."""
 import streamlit as st
 
-from teamapp import boot, ui_admin, ui_common, ui_login
+from teamapp import boot, ui_admin, ui_common, ui_login, ui_student
 
 st.set_page_config(page_title="팀 편성", page_icon="👥")
 
@@ -14,9 +14,9 @@ except Exception as e:  # noqa: BLE001 - 접속 정보가 섞일 수 있어 오�
     st.stop()
 
 user = ui_login.render()
-if user is not None:
-    if user.is_admin:
+if user is not None and not user.is_admin:
+    ui_student.render(user)  # 학생 화면은 result 를 자동 갱신 영역 안에서 그린다
+else:
+    if user is not None:
         ui_admin.render(user)
-    else:
-        st.info("학생 화면은 다음 단계에서 만듦")
-ui_common.render_result()
+    ui_common.render_result()

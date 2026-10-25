@@ -93,7 +93,9 @@ def test_admin_screen_keys():
     assert "관리자" in container_text(at, "whoami")
 
 
-def test_student_screen_has_no_admin_keys():
+def test_student_screen_has_no_admin_keys(monkeypatch):
+    empty = service.Snapshot(False, False, {1: [], 2: []}, [], {}, None, None)
+    monkeypatch.setattr(service, "snapshot", lambda actor: empty)
     at = run(STUDENT)
     assert "whoami" in keys(at)
     assert not [k for k in keys(at) if k.startswith("admin_")]
