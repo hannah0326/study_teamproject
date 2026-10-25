@@ -12,6 +12,9 @@ __pycache__/
 venv/
 .pytest_cache/
 
+# 제출용 압축 파일은 저장소에 올리지 않음
+*.zip
+
 # 운영체제와 편집기 부산물
 .DS_Store
 Thumbs.db
