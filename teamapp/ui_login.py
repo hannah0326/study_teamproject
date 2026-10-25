@@ -27,7 +27,7 @@ def render() -> User | None:
                 st.session_state.get("login_password", ""),
             )
         except Exception as e:  # noqa: BLE001 - 오류 내용은 화면에 쓰지 않음
-            print(f"로그인 중 오류: {type(e).__name__}")
+            ui_common.log_error("로그인 중 오류", e)
             ui_common.set_result("막힘", "처리 중 오류가 발생함. 잠시 뒤 다시 시도하세요")
             return None
         if found is None:

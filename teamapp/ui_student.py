@@ -11,6 +11,7 @@ from teamapp.service import Snapshot, User
 
 KST = ZoneInfo("Asia/Seoul")
 REFRESH_SECONDS = 5
+_WAITING_KEY = "waiting_apply"  # 대기를 받은 내 지원: (학번, 팀 번호)
 
 
 def render(user: User) -> None:
@@ -18,10 +19,15 @@ def render(user: User) -> None:
 
 
 def _do_apply(user: User, team_no: int) -> None:
-    ui_common.run_action(lambda: service.apply(user, team_no))
+    decision = ui_common.run_action(lambda: service.apply(user, team_no))
+    if decision is not None and decision.word == "대기":
+        st.session_state[_WAITING_KEY] = (user.student_no, team_no)
+    else:
+        st.session_state.pop(_WAITING_KEY, None)
 
 
 def _do_vote(user: User, applicant_no: str, yes: bool) -> None:
+    st.session_state.pop(_WAITING_KEY, None)
     ui_common.run_action(lambda: service.vote(user, applicant_no, yes))
 
 
@@ -31,12 +37,17 @@ def _live(user: User) -> None:
     try:
         snap = service.snapshot(user)
     except Exception as e:  # noqa: BLE001 - 오류 문구에 접속 정보가 섞일 수 있어 종류만 남김
-        print(f"현황 조회 중 오류: {type(e).__name__}")
+        ui_common.log_error("현황 조회 중 오류", e)
         st.warning("현황을 불러오지 못함. 잠시 뒤 자동으로 다시 시도함")
         ui_common.render_result()
         return
+    if not snap.signed_in:  # 명단을 다시 올려 이 로그인의 계정이 없어짐
+        st.session_state.pop("user", None)
+        ui_common.set_result("막힘", service.REASON_RELOGIN)
+        st.rerun(scope="app")
 
     ui_common.render_result()
+    _decided_notice(user, snap)
     _my_status(snap)
     can_apply = snap.my_team is None and not _has_pending(snap) and not snap.closed
     for team_no, members in snap.teams.items():
@@ -52,6 +63,20 @@ def _has_pending(snap: Snapshot) -> bool:
 def _describe(s: Student) -> str:
     subs = f" / 보조: {', '.join(s.sub_roles)}" if s.sub_roles else ""
     return f"{s.name} — {s.main_role}{subs}"
+
+
+def _decided_notice(user: User, snap: Snapshot) -> None:
+    """대기를 받은 내 지원이 다른 팀원의 표로 결정되면 알린다. result 는 동작 직후의 결과라 바꾸지 않는다."""
+    app = snap.my_app
+    if app is None or app.status == "대기":
+        return
+    if st.session_state.get(_WAITING_KEY) != (user.student_no, app.team_no):
+        return
+    if app.status == "승인":
+        st.success(f"내 지원이 팀{app.team_no}에 승인됨")
+    else:
+        reason = f": {app.reason}" if app.reason else ""
+        st.warning(f"내 지원이 팀{app.team_no}에서 거절됨{reason}")
 
 
 def _my_status(snap: Snapshot) -> None:

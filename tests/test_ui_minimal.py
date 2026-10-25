@@ -15,7 +15,10 @@ ADMIN = User(1, "admin", "관리자", True)
 
 @pytest.fixture(autouse=True)
 def no_boot(monkeypatch):
+    """화면 시험은 DB에 닿지 않는다: 시작 준비를 건너뛰고 학생 화면의 현황은 빈 상태로 둔다."""
     monkeypatch.setattr(boot, "ensure_ready", lambda: None)
+    empty = service.Snapshot(False, False, {1: [], 2: []}, [], {}, None, None)
+    monkeypatch.setattr(service, "snapshot", lambda actor: empty)
 
 
 def run(user=None) -> AppTest:
@@ -93,9 +96,7 @@ def test_admin_screen_keys():
     assert "관리자" in container_text(at, "whoami")
 
 
-def test_student_screen_has_no_admin_keys(monkeypatch):
-    empty = service.Snapshot(False, False, {1: [], 2: []}, [], {}, None, None)
-    monkeypatch.setattr(service, "snapshot", lambda actor: empty)
+def test_student_screen_has_no_admin_keys():
     at = run(STUDENT)
     assert "whoami" in keys(at)
     assert not [k for k in keys(at) if k.startswith("admin_")]

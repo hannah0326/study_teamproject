@@ -120,6 +120,22 @@ def test_rejected_can_reapply_same_team(db, run):
     assert run.apply(no(4), 1).word == "대기"
 
 
+def test_old_login_after_reupload_is_blocked_not_error(db, run):
+    """명단을 다시 올리기 전에 로그인한 학생: 오류가 아니라 다시 로그인하라는 막힘이어야 한다."""
+    old = run.user(no(1))
+    service.start_from_roster(ADMIN, (FIX / "어려움.csv").read_bytes(), 4)
+    relogin = rules.Decision("막힘", service.REASON_RELOGIN)
+    assert service.apply(old, 1) == relogin
+    assert service.vote(old, no(4), True) == relogin
+    assert service.snapshot(old).signed_in is False
+    assert count(db, "select count(*) from tf_applications") == 0
+
+    fresh = service.login(no(1), service.STUDENT_PASSWORD)
+    assert fresh.id != old.id
+    assert service.snapshot(fresh).signed_in is True
+    assert service.apply(fresh, 1).word == "승인"
+
+
 def test_free_slot_is_smallest_empty(db, run):
     run.apply(no(1), 1)
     run.apply(no(4), 1)

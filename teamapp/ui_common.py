@@ -24,6 +24,11 @@ def render_result() -> None:
         st.write(st.session_state.get(_STATE_KEY, EMPTY_TEXT))
 
 
+def log_error(label: str, e: Exception) -> None:
+    """오류의 종류만 서버 로그에 남긴다(문구에 접속 정보가 섞일 수 있음). 출력이 버퍼에 남지 않게 바로 내보낸다."""
+    print(f"{label}: {type(e).__name__}", flush=True)
+
+
 def run_action(action: Callable[[], Decision]) -> Decision | None:
     """서비스 호출을 실행해 결과 안내에 반영한다. 예기치 못한 오류의 내용은 화면에 쓰지 않는다."""
     try:
@@ -32,7 +37,7 @@ def run_action(action: Callable[[], Decision]) -> Decision | None:
         set_result("막힘", "관리자만 쓸 수 있는 기능임")
         return None
     except Exception as e:  # noqa: BLE001 - 오류 문구에 접속 정보가 섞일 수 있어 종류만 남김
-        print(f"처리 중 오류: {type(e).__name__}")
+        log_error("처리 중 오류", e)
         set_result("막힘", "처리 중 오류가 발생함. 잠시 뒤 다시 시도하세요")
         return None
     set_result(decision.word, decision.reason)

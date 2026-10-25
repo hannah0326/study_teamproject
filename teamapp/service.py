@@ -107,6 +107,7 @@ def start_from_roster(actor: User | None, data: bytes, team_count: int) -> Decis
 
 # ---- 지원과 투표 ----
 REASON_TAKEN = "먼저 도착한 학생이 자리를 차지함"
+REASON_RELOGIN = "명단이 바뀌어 다시 로그인해야 함"
 _SUB_ROLES = (
     "(select coalesce(array_agg(r.role order by r.role), '{}') "
     "from tf_student_sub_roles r where r.student_id = s.id)"
@@ -115,6 +116,13 @@ _SUB_ROLES = (
 
 def _student(row) -> Student:
     return Student(row[0], row[1], row[2], tuple(row[3]))
+
+
+def _signed_in(conn, actor: User) -> bool:
+    """로그인할 때 받은 계정이 아직 있는지. 명단을 다시 올리면 학생 계정은 새 번호로 다시 만들어진다."""
+    return conn.execute(
+        "select 1 from tf_students where id = %s and student_no = %s", (actor.id, actor.student_no)
+    ).fetchone() is not None
 
 
 def _flag(conn, key: str) -> bool:
@@ -178,6 +186,8 @@ def apply(actor: User, team_no: int) -> Decision:
     if actor is None or actor.is_admin:
         return Decision("막힘", "학생만 쓸 수 있는 기능임")
     with db.connection() as conn:
+        if not _signed_in(conn, actor):
+            return Decision("막힘", REASON_RELOGIN)
         team = conn.execute(
             "select id from tf_teams where name = %s for update", (f"팀{team_no}",)
         ).fetchone()
@@ -218,6 +228,8 @@ def vote(actor: User, applicant_no: str, yes: bool) -> Decision:
     if actor is None or actor.is_admin:
         return Decision("막힘", "학생만 쓸 수 있는 기능임")
     with db.connection() as conn:
+        if not _signed_in(conn, actor):
+            return Decision("막힘", REASON_RELOGIN)
         found = conn.execute(
             "select a.team_id from tf_applications a join tf_students s on s.id = a.student_id "
             "where s.student_no = %s order by (a.status = '대기') desc, a.id desc limit 1",
@@ -289,6 +301,7 @@ class Snapshot:
     my_votes: dict[str, bool]  # 내가 투표한 대기 지원 지원자 학번 → 찬성 여부
     my_team: int | None
     my_app: MyApp | None  # 내 가장 최근 지원
+    signed_in: bool = True  # 로그인한 계정이 아직 DB에 있는지(명단을 다시 올리면 없어짐)
 
 
 def snapshot(actor: User) -> Snapshot:
@@ -339,6 +352,7 @@ def snapshot(actor: User) -> Snapshot:
             my_votes=my_votes,
             my_team=my_team,
             my_app=MyApp(_team_no(mine[0]), mine[1], mine[2]) if mine else None,
+            signed_in=_signed_in(conn, actor),
         )
 
 

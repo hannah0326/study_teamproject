@@ -186,6 +186,64 @@ def test_no_refresh_key_and_result_once(fake):
     assert all(names.count(f"team_{n}") == 1 for n in (1, 2, 3))
 
 
+@pytest.mark.parametrize(
+    "status, reason, notice",
+    [("승인", "", "내 지원이 팀1에 승인됨"), ("거절", "", "내 지원이 팀1에서 거절됨")],
+)
+def test_notice_when_my_waiting_app_is_decided_later(fake, status, reason, notice):
+    """지원해서 대기를 받은 뒤 다른 팀원의 표로 결정되면, result 는 그대로 두고 안내를 따로 보인다."""
+    fake.reply = Decision("대기", "")
+    fake.after = replace(EMPTY, teams={1: [stu(2)], 2: [], 3: []}, my_app=MyApp(1, "대기", ""))
+    at = run()
+    at.button(key="apply_1").click().run()
+    assert container_text(at, "result").startswith("대기")
+    assert "내 지원이" not in text_of(at.main)
+
+    decided_team = 1 if status == "승인" else None
+    members = [stu(2), stu(1)] if status == "승인" else [stu(2)]
+    fake.state = replace(EMPTY, teams={1: members, 2: [], 3: []}, my_team=decided_team,
+                         my_app=MyApp(1, status, reason))
+    at.run()
+    assert container_text(at, "result").startswith("대기")  # 동작 직후의 결과는 바꾸지 않음
+    assert notice in text_of(at.main)
+
+
+def test_no_notice_when_result_was_already_final_or_from_vote(fake):
+    fake.reply = Decision("승인", "")
+    fake.after = replace(EMPTY, teams={1: [stu(1)], 2: [], 3: []}, my_team=1, my_app=MyApp(1, "승인", ""))
+    at = run()
+    at.button(key="apply_1").click().run()
+    assert "내 지원이" not in text_of(at.main)
+
+    # 투표의 결과가 대기여도 그것은 내 지원이 아니므로 안내하지 않음
+    fake.state = replace(fake.after, pending=[PendingApp(stu(6), 1, {})])
+    fake.reply = Decision("대기", "")
+    fake.after = None
+    at.run()
+    at.button(key="vote_yes_2026306").click().run()
+    assert container_text(at, "result").startswith("대기")
+    assert "내 지원이" not in text_of(at.main)
+
+
+def test_signed_out_when_account_gone(fake):
+    """명단을 다시 올려 계정이 없어지면 로그아웃시키고 다시 로그인하라고 안내한다."""
+    fake.state = replace(EMPTY, signed_in=False)
+    at = run()
+    assert not at.exception
+    assert "user" not in at.session_state
+    assert {"login_student_no", "login_password", "login_submit"} <= keys(at)
+    assert not [k for k in keys(at) if k.startswith(("apply_", "team_"))]
+    assert container_text(at, "result") == f"막힘: {service.REASON_RELOGIN}"
+
+
+def test_log_error_writes_kind_only(capsys):
+    from teamapp import ui_common
+
+    ui_common.log_error("처리 중 오류", RuntimeError("postgresql://user:SECRETPW@host:5432/db"))
+    out = capsys.readouterr().out
+    assert out == "처리 중 오류: RuntimeError\n"
+
+
 def test_snapshot_error_is_shown_without_secrets(fake, monkeypatch):
     def boom(actor):
         raise RuntimeError("postgresql://user:SECRETPW@host:5432/db")

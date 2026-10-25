@@ -9,7 +9,7 @@ st.set_page_config(page_title="팀 편성", page_icon="👥")
 try:
     boot.ensure_ready()
 except Exception as e:  # noqa: BLE001 - 접속 정보가 섞일 수 있어 오류 내용은 화면에 쓰지 않음
-    print(f"시작 중 오류: {type(e).__name__}")
+    ui_common.log_error("시작 중 오류", e)
     st.error("앱을 시작하지 못함. 설정(DB 주소, 관리자 비밀번호)을 확인하세요.")
     st.stop()
 
