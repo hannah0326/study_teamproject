@@ -18,11 +18,11 @@ WP = "웹 프로그래머"
 MIN_TEAM = 2
 MAX_TEAM = 4
 
-# 임시 모델(4단계에서 실제 호출 시험 뒤 확정)
+# 1차, 2차, 3차 모델. 4단계 실제 호출 시험 결과로 정함(근거는 docs/근거기록.md 의 AI 호출 실패 절)
 MODELS = (
-    "xingchen-agi/xing4.0-29b-a4b:free",
+    "nvidia/nemotron-3.5-super-vl:free",
     "nvidia/nemotron-3-ultra-550b-a55b:free",
-    "google/gemma-4-31b-it:free",
+    "google/gemma-4-26b-a4b-it:free",
 )
 AI_TIMEOUT_SECONDS = 120
 

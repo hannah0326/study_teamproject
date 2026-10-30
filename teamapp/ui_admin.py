@@ -62,8 +62,8 @@ def _assign_status(view: AdminView) -> None:
     if view.status:
         first, *attempts = view.status.splitlines()
         st.write(first)
-        for line in attempts:
-            st.caption(line)
+        for line in attempts:  # 오픈라우터 문구와 모델 답이 섞이므로 마크다운으로 해석하지 않음
+            st.text(line)
     elif not view.closed:
         st.caption("모집을 마감한 뒤 AI 배정을 누르세요")
     if view.proposal is not None:

@@ -118,6 +118,25 @@ def test_log_keeps_reason_and_answer_head(hard_closed):
     assert all(len(a.detail) <= 400 for a in result.log)
 
 
+def test_attempt_line_never_puts_colon_after_model_name():
+    """'모델이름:free: …' 처럼 쌍점 사이에 낱말이 오면 화면에서 이모지로 바뀐다(발견한 문제)."""
+    line = assign_flow.describe_attempt(
+        assign_flow.AttemptLog(1, "m/first:free", "http_429", 2.2, "upstream busy")
+    )
+    assert line == "1차 모델(m/first:free) — 사용량이 많다며 거절함(429) (2.2초) — upstream busy"
+    ok_line = assign_flow.describe_attempt(assign_flow.AttemptLog(2, "m/second:free", "ok", 52.6))
+    assert ok_line == "2차 모델(m/second:free) — 성공 (52.6초)"
+
+
+def test_live_status_has_no_outside_text(hard_closed):
+    """진행 안내(마크다운으로 그림)에는 우리가 쓴 문장만 넣고, 바깥에서 온 이유는 기록 줄에만 남긴다."""
+    teams, free = hard_closed
+    call = FakeCall(AiResult(False, None, "http_429", 1.0, "x:free: busy"), fail("empty"), fail("empty"))
+    result, statuses = run(teams, free, call)
+    assert not [s for s in statuses if "x:free: busy" in s]
+    assert result.log[0].detail == "x:free: busy"
+
+
 def test_three_failures_use_solver_and_pass_validation(hard_closed):
     teams, free = hard_closed
     call = FakeCall(fail("http_429"), fail("empty"), ok(bad_rule_text(teams, free)))

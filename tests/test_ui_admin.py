@@ -160,6 +160,15 @@ def test_no_assignment_reason_in_assign_status(fake):
     assert "팀3에 웹 프로그래머를 맡을 학생이 없음" in container_text(at, "assign_status")
 
 
+def test_attempt_lines_shown_as_plain_text(fake):
+    """모델별 줄은 마크다운으로 해석하지 않는다: ':free:' 같은 글이 이모지로 바뀌지 않고 그대로 보여야 함."""
+    line = "1차 모델(m/first:free) — 사용량이 많다며 거절함(429) (2.2초) — x:free: is *limited*"
+    fake.view = replace(VIEW, closed=True, status="3차 모델까지 실패하여 앱이 직접 배정함\n" + line)
+    at = run()
+    assert line in [t.value for t in at.text]
+    assert all(line not in str(getattr(m, "value", "")) for m in at.markdown)
+
+
 def test_confirm_click(fake):
     fake.reply = Decision("승인", "배정안을 확정함")
     at = run()

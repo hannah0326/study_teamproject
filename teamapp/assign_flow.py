@@ -50,7 +50,8 @@ def explain(result: str) -> str:
 
 def describe_attempt(a: AttemptLog) -> str:
     """기록 한 줄: 몇 차 모델이 어떻게 끝났는지와 실패 이유."""
-    line = f"{a.step}차 {a.model}: {'성공' if a.result == 'ok' else explain(a.result)} ({a.seconds}초)"
+    # 모델 이름 바로 뒤에 쌍점을 두지 않는다: '…:free: …' 는 화면에서 이모지 약속어로 바뀜
+    line = f"{a.step}차 모델({a.model}) — {'성공' if a.result == 'ok' else explain(a.result)} ({a.seconds}초)"
     return f"{line} — {a.detail}" if a.detail else line
 
 
@@ -99,7 +100,7 @@ def run(
             message = f"{label}의 배정안이 5가지 검사를 통과함"
             on_status(message)
             return FlowResult(assignment, f"ai{step}", message, log)
-        on_status(f"{label} 실패: {explain(outcome)}" + (f" — {detail}" if detail else ""))
+        on_status(f"{label} 실패: {explain(outcome)}")  # 바깥에서 온 이유는 기록 줄에만 남김
     on_status(SOLVER_MESSAGE)
     return FlowResult(found.assignment, "solver", SOLVER_MESSAGE, log)
 
