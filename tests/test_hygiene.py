@@ -125,6 +125,8 @@ def test_readme_matches_repo():
     assert re.findall(r"`([^`]+:free)`", models_line) == list(config.MODELS)
     for n in range(1, 8):
         assert re.search(rf"^## {n}\. ", readme, re.M), f"README {n}항 없음"
+    first = readme.split("## 1. ", 1)[1].split("## 2. ", 1)[0]
+    assert re.search(r"^https://[a-z0-9-]+\.streamlit\.app$", first, re.M), "README 1항에 배포 주소가 없음"
 
 
 def test_db_keepalive_workflow():

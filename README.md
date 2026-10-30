@@ -10,7 +10,9 @@
 
 ## 1. 배포 주소
 
-(배포한 뒤 적음)
+https://tf-hannah0326.streamlit.app
+
+- Streamlit Community Cloud, 저장소 `hannah0326/study_teamproject` 의 `main` 브랜치, 앱 파일 `streamlit_app.py`. [배포 직후 로그인 화면](img/5단계_배포직후_로그인화면.png), 공개(public and searchable)로 바꾼 뒤 [로그인하지 않은 시크릿 창에서 연 화면](img/5단계_공개설정뒤_시크릿창_로그인화면.png)
 
 ## 2. PRD와 구현 계획의 위치
 
@@ -30,7 +32,7 @@
 | AI 응답이 늦을 때 | 어려운 해결 | 모델마다 요청 시작부터 응답을 다 받을 때까지 전체 120초를 재서 끊고 다음 모델로 넘어감 |
 | 3차 모델까지 실패 | 어려운 해결 | 앱이 5가지 검사를 모두 통과하는 배정을 완전탐색(가지치기)으로 찾음 |
 | AI 대기 중 화면 | 어려운 해결 | `assign_status` 에 "N차 모델(이름) 응답을 기다리는 중 … 경과 N초" 를 1초마다 갱신해 보여 줌 |
-| DB(Supabase)가 일시정지되지 않게 | 어려운 해결 | 외부 예약 서비스(GitHub Actions)로 매일 DB 에 질의 |
+| DB(Supabase)가 일시정지되지 않게 | 어려운 해결 | 외부 예약 서비스(GitHub Actions, [`.github/workflows/db-keepalive.yml`](.github/workflows/db-keepalive.yml))로 매일 한국 시각 오전 9시에 DB 에 `select 1`. [실행 성공 화면](img/3항_DB일시정지방지_2_진단추가뒤_성공.png) |
 
 ## 4. 쓴 모델 3개
 
