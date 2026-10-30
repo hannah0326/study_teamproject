@@ -24,13 +24,33 @@ jobs:
         shell: python
         run: |
           import os, sys, psycopg
-          url = os.environ.get("DATABASE_URL")
+          from urllib.parse import urlsplit
+          raw = os.environ.get("DATABASE_URL") or ""
+          url = raw.strip()  # 붙여 넣을 때 딸려 온 앞뒤 공백·줄바꿈은 지움
           if not url:
               sys.exit("DATABASE_URL 비밀 값이 없음")
+          # 값 자체는 출력하지 않고, 실패 원인을 가릴 진단만 남김
+          parts = urlsplit(url)
+          print("진단: 앞뒤 공백·줄바꿈 있었음 =", raw != url,
+                "/ postgresql:// 로 시작 =", url.startswith(("postgresql://", "postgres://")),
+                "/ pooler 주소 =", (parts.hostname or "").endswith("pooler.supabase.com"),
+                "/ 포트 =", parts.port)
           try:
               with psycopg.connect(url, connect_timeout=15) as conn:
                   conn.execute("select 1").fetchone()
           except Exception as e:
-              # 오류 문구에 접속 정보가 섞일 수 있어 종류만 남김
-              sys.exit(f"DB 질의 실패: {type(e).__name__}")
+              # 오류 문구에 접속 정보가 섞일 수 있어 원문 대신 종류와 분류만 남김
+              text = str(e).lower()
+              if "password authentication failed" in text:
+                  kind = "비밀번호(또는 사용자 이름)가 맞지 않음"
+              elif "tenant or user not found" in text:
+                  kind = "pooler 사용자 이름(postgres.프로젝트ID)이 맞지 않음"
+              elif any(k in text for k in ("unreachable", "resolve host", "could not translate host",
+                                            "name or service not known", "no route", "getaddrinfo")):
+                  kind = "주소에 닿지 못함(Direct connection 주소이면 IPv6 전용이라 접속 불가, Session pooler 주소를 쓸 것)"
+              elif "timeout" in text or "timed out" in text:
+                  kind = "시간 초과"
+              else:
+                  kind = "기타"
+              sys.exit(f"DB 질의 실패: {type(e).__name__} / {kind}")
           print("DB 질의 성공")

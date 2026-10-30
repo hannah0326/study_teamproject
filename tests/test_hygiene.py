@@ -134,7 +134,8 @@ def test_db_keepalive_workflow():
     assert "workflow_dispatch" in wf
     assert "${{ secrets.DATABASE_URL }}" in wf
     assert 'select 1' in wf and "type(e).__name__" in wf
-    assert "postgres://" not in wf and "postgresql://" not in wf
+    assert "str(e))" not in wf and "print(e" not in wf  # 오류 원문(접속 정보가 섞일 수 있음)을 출력하지 않음
+    assert not re.search(r"postgres(?:ql)?://[^\s:/@\"']+:[^\s@\"']+@", wf)  # 비밀번호가 든 주소가 적혀 있지 않음
 
 
 @pytest.mark.db
