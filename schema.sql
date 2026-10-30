@@ -78,3 +78,14 @@ create table if not exists tf_ai_logs (
 -- 앞서 만든 DB에도 새 열을 더함
 alter table tf_ai_logs add column if not exists started_at timestamptz;
 alter table tf_ai_logs add column if not exists detail text;
+
+-- 모든 표에 RLS(행 수준 보안)를 켬. 정책을 두지 않으므로 Supabase 공개 데이터 API 로는 어떤 행도 읽거나 쓸 수 없음
+-- (비밀번호 해시가 든 tf_students 보호). 앱은 표 주인 계정으로 접속하므로 영향을 받지 않음.
+alter table tf_students          enable row level security;
+alter table tf_student_sub_roles enable row level security;
+alter table tf_teams             enable row level security;
+alter table tf_members           enable row level security;
+alter table tf_applications      enable row level security;
+alter table tf_votes             enable row level security;
+alter table tf_settings          enable row level security;
+alter table tf_ai_logs           enable row level security;

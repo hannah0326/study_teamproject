@@ -142,7 +142,7 @@ def build_messages(teams: Mapping[int, Sequence[Student]], free: Sequence[Studen
     )
     answer_format = (
         '답은 JSON 하나로만 한다. 형식: {"teams": {"팀 번호": ["새로 넣는 학생의 학번", ...]}}\n'
-        '예: {"teams": {"1": ["2026310"], "2": ["2026306", "2026313"]}}\n'
+        '예(형식만 보이는 가짜 학번): {"teams": {"1": ["1003"], "2": ["1001", "1002"]}}\n'
         "설명이나 다른 글은 쓰지 않는다."
     )
     return [
