@@ -107,6 +107,26 @@ def test_keys_table_present():
     assert 'key="refresh"' not in code  # 자동 갱신을 골라 새로 고침 단추는 두지 않음
 
 
+def test_readme_matches_repo():
+    """README 의 근거가 실제와 맞음: 링크한 파일이 있고, 적은 커밋이 있고, 모델이 설정과 같고, 7.1절 1~7항이 다 있음."""
+    from teamapp import config
+
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    links = re.findall(r"\]\(([^)#]+)\)", readme)
+    local = [link for link in links if not link.startswith("http")]
+    assert local and [link for link in local if not (ROOT / link).exists()] == []
+    hashes = set(re.findall(r"`([0-9a-f]{7})`", readme))
+    missing = [
+        h for h in hashes
+        if subprocess.run(["git", "cat-file", "-e", f"{h}^{{commit}}"], cwd=ROOT).returncode != 0
+    ]
+    assert hashes and missing == []
+    models_line = next(ln for ln in readme.splitlines() if ln.startswith("1차 `"))
+    assert re.findall(r"`([^`]+:free)`", models_line) == list(config.MODELS)
+    for n in range(1, 8):
+        assert re.search(rf"^## {n}\. ", readme, re.M), f"README {n}항 없음"
+
+
 @pytest.mark.db
 def test_rls_enabled_on_all_tf_tables(db):
     """Supabase 공개 API로 표(비밀번호 해시 포함)를 읽지 못하게 모든 tf_ 표에 RLS 를 켬."""
