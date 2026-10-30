@@ -19,6 +19,8 @@ def no_boot(monkeypatch):
     monkeypatch.setattr(boot, "ensure_ready", lambda: None)
     empty = service.Snapshot(False, False, {1: [], 2: []}, [], {}, None, None)
     monkeypatch.setattr(service, "snapshot", lambda actor: empty)
+    view = service.AdminView(False, False, False, {}, [], None, None)
+    monkeypatch.setattr(service, "admin_view", lambda actor: view)
 
 
 def run(user=None) -> AppTest:

@@ -66,10 +66,20 @@ class DbRunner:
         return self.service.vote(self.user(voter_no), applicant_no, yes)
 
     def close(self):
-        raise NotImplementedError("모집 마감은 4단계에서 만듦")
+        return self.service.close_recruitment(self.user("admin"))
 
     def assign_and_confirm(self):
-        raise NotImplementedError("배정은 4단계에서 만듦")
+        """실제 AI는 부르지 않는다: 가짜 AI가 세 번 다 실패해 앱이 직접 배정하는 길로 간다."""
+        from teamapp.ai import AiResult
+
+        def failing(model, messages):
+            return AiResult(False, None, "http_429", 0.0)
+
+        admin = self.user("admin")
+        proposed = self.service.propose_assignment(admin, call=failing)
+        if proposed.word != "승인":
+            return proposed
+        return self.service.confirm_assignment(admin)
 
     def unassigned(self):
         return self.service.unassigned()

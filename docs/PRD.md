@@ -1,5 +1,6 @@
 <!-- 작성: 2026-10-25 21:10 KST -->
 <!-- 수정: 2026-10-25 22:26 KST (CSV 검증, 결과 안내, 확정 뒤 상태, 1·2단계 확인 방식 보완) -->
+<!-- 수정: 2026-10-26 04:42 KST (AI 호출 기록에 시작 시각과 실패 이유 추가) -->
 
 # PRD: 팀 프로젝트 팀 편성 웹 앱
 
@@ -274,7 +275,7 @@ student_no,name,main_role,sub_roles
 4. 5가지 검사: ① 팀이 없는 학생이 빠짐없이 배정됨 ② 한 학생은 한 팀에만 ③ 모든 팀이 2~4명 ④ 팀 안에서 주 역할 중복 없음 ⑤ 필수 포함 역할 충족.
 5. 3차까지 실패하면 앱이 `solver` 로 직접 배정하고 `assign_status` 에 "3차 모델까지 실패하여 앱이 직접 배정함"을 보임. `solver` 는 5가지 검사를 모두 통과하는 배정을 모든 경우를 따져 찾음(가지치기 사용).
 6. 검사를 통과한 배정안만 관리자에게 보여 줌(학생의 이름과 역할, 배정된 팀). `admin_confirm` 을 누르면 다시 검사한 뒤 DB에 저장함. 배정안은 DB(`tf_settings`)에도 보관해 화면을 다시 그려도 유지함 **(제 판단)**.
-7. 모든 호출은 `tf_ai_logs` 에 기록(차수, 모델, 결과, 소요 시간). 키는 기록하지 않음.
+7. 모든 호출은 `tf_ai_logs` 에 기록(시작 시각, 차수, 모델, 결과, 실패 이유, 소요 시간). 실패 이유는 오픈라우터의 오류 문구나 모델 답의 앞부분을 짧게 남기며, 키처럼 생긴 글은 가림. 키는 기록하지 않음.
 8. 전체 AI 배정은 어떤 경우에도 10분을 넘기지 않음(최대 3×120초 + 직접 배정).
 
 ### 6.6 확정과 재조회
@@ -293,7 +294,7 @@ student_no,name,main_role,sub_roles
 | `tf_applications` | `id`, `team_id`, `student_id`, `status`, `reason`, `created_at`, `decided_at` | `status` check(대기, 승인, 거절) |
 | `tf_votes` | `application_id`, `voter_id`, `vote` | PK `(application_id, voter_id)`, `vote` check(찬성, 거부) |
 | `tf_settings` | `key`, `value` | 마감 여부, 확정 여부, 배정안 등 |
-| `tf_ai_logs` | `id`, `created_at`, `step`, `model`, `result`, `seconds` | 추가 테이블 **(제 판단)** |
+| `tf_ai_logs` | `id`, `created_at`, `started_at`, `step`, `model`, `result`, `detail`, `seconds` | 추가 테이블 **(제 판단)** |
 
 - 모든 테이블 이름은 `tf_` 로 시작함(같은 DB의 다른 테이블과 구분).
 - 비밀번호는 `password_hash` 열에만 해시로 저장.

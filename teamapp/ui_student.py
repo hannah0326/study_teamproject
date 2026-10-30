@@ -60,11 +60,6 @@ def _has_pending(snap: Snapshot) -> bool:
     return snap.my_app is not None and snap.my_app.status == "대기"
 
 
-def _describe(s: Student) -> str:
-    subs = f" / 보조: {', '.join(s.sub_roles)}" if s.sub_roles else ""
-    return f"{s.name} — {s.main_role}{subs}"
-
-
 def _decided_notice(user: User, snap: Snapshot) -> None:
     """대기를 받은 내 지원이 다른 팀원의 표로 결정되면 알린다. result 는 동작 직후의 결과라 바꾸지 않는다."""
     app = snap.my_app
@@ -95,7 +90,7 @@ def _team(user: User, snap: Snapshot, team_no: int, members: list[Student], can_
         mine = " · 내 팀" if snap.my_team == team_no else ""
         st.markdown(f"**팀{team_no}** ({len(members)}/{config.MAX_TEAM}){mine}")
         for s in members:
-            st.write(_describe(s))
+            st.write(ui_common.describe(s))
         # 팀이 꽉 참, 같은 주 역할 등은 단추를 보이게 두고 누르면 막힘 이유를 보인다
         if can_apply:
             st.button(
@@ -113,7 +108,7 @@ def _votes(user: User, snap: Snapshot) -> None:
     for p in mine:
         no = p.applicant.student_no
         yes = sum(p.votes.values())
-        st.write(f"{_describe(p.applicant)} · 찬성 {yes}/{size}")
+        st.write(f"{ui_common.describe(p.applicant)} · 찬성 {yes}/{size}")
         if no in snap.my_votes:
             st.write(f"내 투표: {'찬성' if snap.my_votes[no] else '거부'}")
             continue

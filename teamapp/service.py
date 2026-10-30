@@ -1,11 +1,13 @@
 # 작성: 2026-10-25 23:23 KST
 """DB 위의 서비스 층. 규칙은 rules, 배정은 solver 를 부르고 이 파일은 저장과 권한만 맡는다."""
+import json
 from dataclasses import dataclass
+from typing import Callable
 
 import bcrypt
 import psycopg
 
-from teamapp import config, db
+from teamapp import assign_flow, config, db
 from teamapp.roster import RosterError, parse_roster
 from teamapp import rules
 from teamapp.rules import Decision, Student
@@ -277,6 +279,29 @@ def vote(actor: User, applicant_no: str, yes: bool) -> Decision:
         return decision
 
 
+# ---- 마감 ----
+def close_recruitment(actor: User | None) -> Decision:
+    """모집 마감. 한 트랜잭션에서 마감 표시 → 대기 지원 거절 → 1명뿐인 팀에서 그 학생을 뺀다."""
+    require_admin(actor)
+    with db.connection() as conn:
+        if not _flag(conn, "roster_loaded"):
+            return Decision("막힘", "명단을 먼저 올려야 함")
+        # 모든 팀 행을 잠가, 지원·투표(팀 행을 잠금)와 마감이 섞이지 않게 한다
+        conn.execute("select id from tf_teams order by id for update")
+        if _flag(conn, "closed"):
+            return Decision("막힘", "이미 마감함")
+        conn.execute("insert into tf_settings values ('closed', '1')")
+        conn.execute(
+            "update tf_applications set status = '거절', reason = '모집 마감', decided_at = now() "
+            "where status = '대기'"
+        )
+        conn.execute(
+            "delete from tf_members m where (select count(*) from tf_members x "
+            "where x.team_id = m.team_id) = 1"
+        )
+    return Decision("승인", "모집을 마감함")
+
+
 # ---- 현황 조회 ----
 @dataclass(frozen=True)
 class PendingApp:
@@ -359,9 +384,162 @@ def snapshot(actor: User) -> Snapshot:
 def unassigned() -> list[Student]:
     """팀이 없는 학생(관리자 제외)을 학번 순으로."""
     with db.connection() as conn:
-        rows = conn.execute(
-            f"select s.student_no, s.name, s.main_role, {_SUB_ROLES} from tf_students s "
-            "where not s.is_admin and not exists (select 1 from tf_members m where m.student_id = s.id) "
-            "order by s.student_no"
-        ).fetchall()
+        return _free(conn)
+
+
+def _free(conn) -> list[Student]:
+    rows = conn.execute(
+        f"select s.student_no, s.name, s.main_role, {_SUB_ROLES} from tf_students s "
+        "where not s.is_admin and not exists (select 1 from tf_members m where m.student_id = s.id) "
+        "order by s.student_no"
+    ).fetchall()
     return [_student(r) for r in rows]
+
+
+def _teams(conn) -> dict[int, list[Student]]:
+    """팀 번호 → 팀원(자리 순). 팀원이 없는 팀도 빈 목록으로 넣는다."""
+    teams: dict[int, list[Student]] = {
+        _team_no(r[0]): [] for r in conn.execute("select name from tf_teams order by id")
+    }
+    for row in conn.execute(
+        f"select t.name, s.student_no, s.name, s.main_role, {_SUB_ROLES} "
+        "from tf_members m join tf_teams t on t.id = m.team_id "
+        "join tf_students s on s.id = m.student_id order by t.id, m.slot_no"
+    ):
+        teams[_team_no(row[0])].append(_student(row[1:]))
+    return teams
+
+
+# ---- 배정안 만들기와 확정 ----
+_PROPOSAL = "proposal"  # tf_settings: 검사를 통과한 배정안(JSON)
+_ASSIGN_STATUS = "assign_status"  # tf_settings: 마지막 AI 배정 안내
+
+
+@dataclass(frozen=True)
+class Proposal:
+    source: str  # ai1, ai2, ai3, solver
+    message: str
+    teams: dict[int, list[Student]]  # 팀 번호 → 새로 들어가는 학생
+
+
+@dataclass(frozen=True)
+class AdminView:
+    roster_loaded: bool
+    closed: bool
+    confirmed: bool
+    teams: dict[int, list[Student]]
+    free: list[Student]
+    proposal: Proposal | None
+    status: str | None
+
+
+def _setting(conn, key: str) -> str | None:
+    row = conn.execute("select value from tf_settings where key = %s", (key,)).fetchone()
+    return row[0] if row else None
+
+
+def _put_setting(conn, key: str, value: str | None) -> None:
+    if value is None:
+        conn.execute("delete from tf_settings where key = %s", (key,))
+    else:
+        conn.execute(
+            "insert into tf_settings values (%s, %s) on conflict (key) do update set value = excluded.value",
+            (key, value),
+        )
+
+
+def _load_proposal(conn) -> Proposal | None:
+    raw = _setting(conn, _PROPOSAL)
+    if raw is None:
+        return None
+    data = json.loads(raw)
+    nos = [no for m in data["teams"].values() for no in m]
+    by_no = {
+        r[0]: _student(r)
+        for r in conn.execute(
+            f"select s.student_no, s.name, s.main_role, {_SUB_ROLES} from tf_students s "
+            "where s.student_no = any(%s)",
+            (nos,),
+        )
+    }
+    teams = {int(n): [by_no[no] for no in m if no in by_no] for n, m in data["teams"].items()}
+    return Proposal(data["source"], data["message"], teams)
+
+
+def admin_view(actor: User | None) -> AdminView:
+    """관리자 화면에 필요한 값을 한 연결에서 읽는다."""
+    require_admin(actor)
+    with db.connection() as conn:
+        return AdminView(
+            roster_loaded=_flag(conn, "roster_loaded"),
+            closed=_flag(conn, "closed"),
+            confirmed=_flag(conn, "confirmed"),
+            teams=_teams(conn),
+            free=_free(conn),
+            proposal=_load_proposal(conn),
+            status=_setting(conn, _ASSIGN_STATUS),
+        )
+
+
+def propose_assignment(
+    actor: User | None,
+    on_status: Callable[[str], None] = lambda s: None,
+    *,
+    call: Callable | None = None,
+) -> Decision:
+    """마감 뒤 남은 학생의 배정안을 만들어 보관한다. AI를 기다리는 동안에는 DB 연결을 쥐고 있지 않는다."""
+    require_admin(actor)
+    with db.connection() as conn:
+        if not _flag(conn, "closed"):
+            return Decision("막힘", "모집을 먼저 마감해야 함")
+        if _flag(conn, "confirmed"):
+            return Decision("막힘", "이미 확정함")
+        teams, free = _teams(conn), _free(conn)
+
+    result = assign_flow.run(teams, free, call=call, on_status=on_status)
+
+    with db.connection() as conn:
+        for a in result.log:
+            conn.execute(
+                "insert into tf_ai_logs (started_at, step, model, result, detail, seconds) "
+                "values (%s, %s, %s, %s, %s, %s)",
+                (a.started_at, a.step, a.model, a.result, a.detail, a.seconds),
+            )
+        # 관리자 화면의 배정 안내: 최종 결과 뒤에 모델별 결과와 실패 이유를 한 줄씩
+        status = "\n".join([result.message, *map(assign_flow.describe_attempt, result.log)])
+        _put_setting(conn, _ASSIGN_STATUS, status)
+        if result.assignment is None:
+            _put_setting(conn, _PROPOSAL, None)
+            return Decision("막힘", assign_flow.NO_ASSIGNMENT)
+        _put_setting(conn, _PROPOSAL, json.dumps({
+            "source": result.source,
+            "message": result.message,
+            "teams": {str(n): [s.student_no for s in m] for n, m in result.assignment.items()},
+        }, ensure_ascii=False))
+    return Decision("승인", f"배정안을 만듦({result.message})")
+
+
+def confirm_assignment(actor: User | None) -> Decision:
+    """보관한 배정안을 지금 상태로 다시 검사한 뒤 팀원으로 저장한다. 확정은 한 번만 할 수 있다."""
+    require_admin(actor)
+    with db.connection() as conn:
+        conn.execute("select id from tf_teams order by id for update")
+        if _flag(conn, "confirmed"):
+            return Decision("막힘", "이미 확정함")
+        proposal = _load_proposal(conn)
+        if proposal is None:
+            return Decision("막힘", "확정할 배정안이 없음")
+        teams, free = _teams(conn), _free(conn)
+        problems = rules.validate_assignment(teams, free, proposal.teams)
+        if problems:
+            return Decision("막힘", f"배정안이 지금 상태와 맞지 않음: {problems[0]}")
+        team_ids = {_team_no(r[1]): r[0] for r in conn.execute("select id, name from tf_teams")}
+        for team_no, added in proposal.teams.items():
+            for s in added:
+                conn.execute(
+                    "insert into tf_members (team_id, slot_no, student_id) "
+                    "select %s, %s, id from tf_students where student_no = %s",
+                    (team_ids[team_no], free_slot(conn, team_ids[team_no]), s.student_no),
+                )
+        _put_setting(conn, "confirmed", "1")
+    return Decision("승인", "배정안을 확정함")

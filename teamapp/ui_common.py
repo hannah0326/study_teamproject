@@ -4,10 +4,16 @@ from typing import Callable
 
 import streamlit as st
 
-from teamapp.rules import Decision
+from teamapp.rules import Decision, Student
 
 _STATE_KEY = "last_result"
 EMPTY_TEXT = "결과 안내가 여기에 나옴"
+
+
+def describe(s: Student) -> str:
+    """학생 한 명을 이름과 역할로 보인다."""
+    subs = f" / 보조: {', '.join(s.sub_roles)}" if s.sub_roles else ""
+    return f"{s.name} — {s.main_role}{subs}"
 
 
 def set_result(word: str, message: str = "") -> None:

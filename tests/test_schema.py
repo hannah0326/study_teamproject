@@ -16,7 +16,7 @@ EXPECTED = {
         "id", "team_id", "student_id", "status", "reason", "created_at", "decided_at"},
     "tf_votes": {"application_id", "voter_id", "vote"},
     "tf_settings": {"key", "value"},
-    "tf_ai_logs": {"id", "created_at", "step", "model", "result", "seconds"},
+    "tf_ai_logs": {"id", "created_at", "started_at", "step", "model", "result", "detail", "seconds"},
 }
 
 

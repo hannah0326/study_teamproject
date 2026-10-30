@@ -63,12 +63,18 @@ create table if not exists tf_settings (
     value text not null
 );
 
--- AI 호출 기록(차수, 모델, 결과, 소요 시간). 키는 기록하지 않음.
+-- AI 호출 기록(시작 시각, 차수, 모델, 결과, 실패 이유, 소요 시간). 키는 기록하지 않음.
+-- created_at 은 기록을 저장한 때(한 번의 배정이 끝난 뒤 함께 저장), started_at 은 그 모델을 부르기 시작한 때.
 create table if not exists tf_ai_logs (
     id         bigint generated always as identity primary key,
     created_at timestamptz not null default now(),
+    started_at timestamptz,
     step       integer,
     model      text,
     result     text,
+    detail     text,
     seconds    numeric
 );
+-- 앞서 만든 DB에도 새 열을 더함
+alter table tf_ai_logs add column if not exists started_at timestamptz;
+alter table tf_ai_logs add column if not exists detail text;
