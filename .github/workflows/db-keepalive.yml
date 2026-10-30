@@ -1,0 +1,36 @@
+# 작성: 2026-10-31 05:35 KST
+# Supabase 무료 프로젝트는 1주일 동안 DB 요청이 적으면 일시정지됨. 하루 한 번 DB에 가벼운 질의(select 1)를 보내 막음.
+# DB 주소는 저장소 Settings > Secrets and variables > Actions 의 DATABASE_URL 에만 둠(코드에 쓰지 않음).
+name: DB 일시정지 방지
+
+on:
+  schedule:
+    - cron: "0 0 * * *"  # 매일 UTC 0시 = 한국 시각 오전 9시(깃허브 사정으로 조금 늦게 돌 수 있음)
+  workflow_dispatch: {}  # Actions 화면에서 직접 한 번 돌려 볼 수 있게
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 접속 도구 설치
+        run: pip install --quiet "psycopg[binary]==3.3.6"
+      - name: DB에 select 1 보내기
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        shell: python
+        run: |
+          import os, sys, psycopg
+          url = os.environ.get("DATABASE_URL")
+          if not url:
+              sys.exit("DATABASE_URL 비밀 값이 없음")
+          try:
+              with psycopg.connect(url, connect_timeout=15) as conn:
+                  conn.execute("select 1").fetchone()
+          except Exception as e:
+              # 오류 문구에 접속 정보가 섞일 수 있어 종류만 남김
+              sys.exit(f"DB 질의 실패: {type(e).__name__}")
+          print("DB 질의 성공")

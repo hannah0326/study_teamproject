@@ -127,6 +127,16 @@ def test_readme_matches_repo():
         assert re.search(rf"^## {n}\. ", readme, re.M), f"README {n}항 없음"
 
 
+def test_db_keepalive_workflow():
+    """DB 일시정지 방지: 매일 예약 실행, 수동 실행 가능, DB 주소는 저장소 비밀 값으로만 받고 오류 문구는 종류만 남김."""
+    wf = (ROOT / ".github" / "workflows" / "db-keepalive.yml").read_text(encoding="utf-8")
+    assert re.search(r'cron: "0 0 \* \* \*"', wf)
+    assert "workflow_dispatch" in wf
+    assert "${{ secrets.DATABASE_URL }}" in wf
+    assert 'select 1' in wf and "type(e).__name__" in wf
+    assert "postgres://" not in wf and "postgresql://" not in wf
+
+
 @pytest.mark.db
 def test_rls_enabled_on_all_tf_tables(db):
     """Supabase 공개 API로 표(비밀번호 해시 포함)를 읽지 못하게 모든 tf_ 표에 RLS 를 켬."""
